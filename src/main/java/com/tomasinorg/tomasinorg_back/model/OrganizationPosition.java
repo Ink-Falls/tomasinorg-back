@@ -1,17 +1,14 @@
 package com.tomasinorg.tomasinorg_back.model;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -21,44 +18,30 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
+@Table(name = "organization_positions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class OrganizationPosition {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(unique = true, nullable = false)
-    private String email;
-    
     @Column(nullable = false)
-    private String name;
+    private String name; // e.g., "President", "Treasurer", etc.
     
-    private String picture;
+    @Column(columnDefinition = "TEXT")
+    private String description; // Role description/responsibilities
     
-    @Column(unique = true, nullable = false)
-    private String googleId;
-    
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
-    
-    // Google OAuth tokens
-    private String accessToken;  // Google access token
-    private String googleRefreshToken;  // Google refresh token
-    
-    // JWT tokens  
-    private String refreshToken;  // JWT refresh token
-    
-    private LocalDateTime tokenExpiresAt;
+    @ManyToOne
+    @JoinColumn(name = "organization_id", nullable = false)
+    private Organization organization;
     
     @Builder.Default
-    @OneToMany(mappedBy = "user", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
-    private List<UserOrganization> userOrganizations = new ArrayList<>();
+    @Column(nullable = false)
+    private Boolean isDefault = false; // True for the default "Member" position
     
     @Column(nullable = false)
     private LocalDateTime createdAt;

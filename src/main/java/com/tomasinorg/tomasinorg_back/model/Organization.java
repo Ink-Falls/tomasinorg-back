@@ -6,8 +6,6 @@ import java.util.List;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,44 +19,39 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
+@Table(name = "organizations")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Organization {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(unique = true, nullable = false)
-    private String email;
-    
     @Column(nullable = false)
     private String name;
     
-    private String picture;
+    @Column(columnDefinition = "TEXT")
+    private String description;
     
-    @Column(unique = true, nullable = false)
-    private String googleId;
-    
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    private String driveEmail;
     
-    // Google OAuth tokens
-    private String accessToken;  // Google access token
-    private String googleRefreshToken;  // Google refresh token
+    @Column(nullable = false)
+    private String password; // This will be hashed
     
-    // JWT tokens  
-    private String refreshToken;  // JWT refresh token
-    
-    private LocalDateTime tokenExpiresAt;
+    @Column
+    private String driveId; // Google Drive folder ID (optional)
     
     @Builder.Default
-    @OneToMany(mappedBy = "user", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "organization", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
     private List<UserOrganization> userOrganizations = new ArrayList<>();
+    
+    @Builder.Default
+    @OneToMany(mappedBy = "organization", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private List<OrganizationPosition> positions = new ArrayList<>();
     
     @Column(nullable = false)
     private LocalDateTime createdAt;

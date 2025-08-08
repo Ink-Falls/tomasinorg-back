@@ -1,6 +1,8 @@
 HELP.md
 API_ENDPOINTS.md
 README.md
+DATABASE_MIGRATION.md
+IMPLEMENTATION_SUMMARY.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
