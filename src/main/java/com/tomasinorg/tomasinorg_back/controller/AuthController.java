@@ -93,27 +93,10 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
-        // Clear cookies
-        clearTokenCookie(response, "accessToken");
-        clearTokenCookie(response, "refreshToken");
-        
-        return ResponseEntity.ok().body("Logged out successfully");
-    }
-
     private void setTokenCookie(HttpServletResponse response, String name, String value, int maxAge) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true);
         cookie.setMaxAge(maxAge);
-        cookie.setPath("/");
-        response.addCookie(cookie);
-    }
-
-    private void clearTokenCookie(HttpServletResponse response, String name) {
-        Cookie cookie = new Cookie(name, "");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(0);
         cookie.setPath("/");
         response.addCookie(cookie);
     }

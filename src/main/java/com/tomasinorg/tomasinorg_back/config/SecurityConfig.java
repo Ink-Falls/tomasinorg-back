@@ -28,26 +28,38 @@ public class SecurityConfig {
 
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOAuth2AuthorizationRequestResolver customOAuth2AuthorizationRequestResolver;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(apiAuthenticationEntryPoint)
+            )
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/", "/error", "/favicon.ico").permitAll()
                 .requestMatchers("/static/**", "/public/**", "/webjars/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/auth/refresh", "/auth/logout").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/auth/refresh").permitAll()  // Keep refresh endpoint
+                .requestMatchers("/api/user/logout").permitAll()  // Single logout endpoint
+                .requestMatchers("/api/debug/**").permitAll()  // Allow diagnostic endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/google/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/orgs/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers("/api/calendar/**").hasAnyRole("USER", "ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(authorization -> authorization
+                    .authorizationRequestResolver(customOAuth2AuthorizationRequestResolver)
+                )
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService)
                 )
@@ -63,10 +75,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:3000", "https://accounts.google.com"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

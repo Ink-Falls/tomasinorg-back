@@ -27,8 +27,30 @@ public class UserService {
         return userRepository.findByRefreshToken(refreshToken);
     }
 
+    public Optional<User> findByGoogleId(String googleId) {
+        return userRepository.findByGoogleId(googleId);
+    }
+
     public User save(User user) {
         return userRepository.save(user);
+    }
+
+    public void updateUserTokens(String email, String accessToken, String googleRefreshToken, String jwtRefreshToken) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        user.setAccessToken(accessToken);
+        user.setGoogleRefreshToken(googleRefreshToken);
+        user.setRefreshToken(jwtRefreshToken);
+        user.setTokenExpiresAt(java.time.LocalDateTime.now().plusSeconds(3600));
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    public boolean isTokenValid(String email) {
+        return userRepository.findByEmail(email)
+                .map(user -> user.getTokenExpiresAt() != null && 
+                           user.getTokenExpiresAt().isAfter(java.time.LocalDateTime.now()) &&
+                           user.getAccessToken() != null)
+                .orElse(false);
     }
 
     public UserDto convertToDto(User user) {
