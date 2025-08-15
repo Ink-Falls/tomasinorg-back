@@ -1,12 +1,10 @@
 package com.tomasinorg.tomasinorg_back.controller;
 
-import com.tomasinorg.tomasinorg_back.model.User;
-import com.tomasinorg.tomasinorg_back.repository.UserRepository;
-import com.tomasinorg.tomasinorg_back.security.JwtTokenProvider;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -14,10 +12,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import com.tomasinorg.tomasinorg_back.model.User;
+import com.tomasinorg.tomasinorg_back.repository.UserRepository;
+import com.tomasinorg.tomasinorg_back.security.JwtTokenProvider;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -27,11 +29,54 @@ public class AuthStatusController {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    
+    // Rate limiting to prevent frontend polling spam
+    private final Map<String, Long> lastRequestTime = new HashMap<>();
 
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getAuthStatus(
             @AuthenticationPrincipal OAuth2User principal,
             HttpServletRequest request) {
+        
+        // Rate limiting to prevent frontend polling spam
+        String clientIP = request.getRemoteAddr();
+        long currentTime = System.currentTimeMillis();
+        
+        if (lastRequestTime.containsKey(clientIP)) {
+            long timeSinceLastRequest = currentTime - lastRequestTime.get(clientIP);
+            if (timeSinceLastRequest < 500) { // 500ms minimum between requests
+                log.warn("⚠️ Rate limiting auth status check from {} ({}ms since last request)", 
+                        clientIP, timeSinceLastRequest);
+                
+                // Still check authentication but return cached-like response to reduce load
+                String jwtToken = extractJwtFromCookies(request);
+                if (jwtToken != null) {
+                    try {
+                        if (jwtTokenProvider.validateToken(jwtToken)) {
+                            String email = jwtTokenProvider.getEmailFromToken(jwtToken);
+                            User user = userRepository.findByEmail(email).orElse(null);
+                            if (user != null) {
+                                Map<String, Object> rateLimitResponse = buildAuthResponse(user, true);
+                                rateLimitResponse.put("rateLimited", true);
+                                rateLimitResponse.put("message", "Rate limited - please reduce request frequency");
+                                return ResponseEntity.ok(rateLimitResponse);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.debug("Rate limit auth check failed: {}", e.getMessage());
+                    }
+                }
+                
+                // Fallback rate limit response
+                Map<String, Object> rateLimitResponse = new HashMap<>();
+                rateLimitResponse.put("authenticated", false);
+                rateLimitResponse.put("rateLimited", true);
+                rateLimitResponse.put("message", "Rate limited - too many requests");
+                rateLimitResponse.put("loginUrl", "/oauth2/authorization/google");
+                return ResponseEntity.ok(rateLimitResponse);
+            }
+        }
+        lastRequestTime.put(clientIP, currentTime);
         
         Map<String, Object> response = new HashMap<>();
         
@@ -209,6 +254,33 @@ public class AuthStatusController {
         Map<String, String> response = new HashMap<>();
         response.put("loginUrl", "/oauth2/authorization/google");
         response.put("message", "Redirect to this URL to start Google OAuth2 login");
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/quick-check")
+    public ResponseEntity<Map<String, Object>> quickAuthCheck(HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        // No rate limiting on this endpoint - just quick check
+        String jwtToken = extractJwtFromCookies(request);
+        
+        if (jwtToken != null) {
+            try {
+                if (jwtTokenProvider.validateToken(jwtToken)) {
+                    String email = jwtTokenProvider.getEmailFromToken(jwtToken);
+                    response.put("authenticated", true);
+                    response.put("email", email);
+                    response.put("message", "Valid JWT token found");
+                    return ResponseEntity.ok(response);
+                }
+            } catch (Exception e) {
+                log.debug("Quick check JWT validation failed: {}", e.getMessage());
+            }
+        }
+        
+        response.put("authenticated", false);
+        response.put("message", "No valid authentication found");
+        response.put("loginUrl", "/oauth2/authorization/google");
         return ResponseEntity.ok(response);
     }
 }

@@ -1,9 +1,7 @@
 package com.tomasinorg.tomasinorg_back.config;
 
-import com.tomasinorg.tomasinorg_back.security.CustomOAuth2UserService;
-import com.tomasinorg.tomasinorg_back.security.JwtAuthenticationFilter;
-import com.tomasinorg.tomasinorg_back.security.OAuth2AuthenticationSuccessHandler;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,7 +16,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import com.tomasinorg.tomasinorg_back.security.CustomOAuth2UserService;
+import com.tomasinorg.tomasinorg_back.security.JwtAuthenticationFilter;
+import com.tomasinorg.tomasinorg_back.security.OAuth2AuthenticationSuccessHandler;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -49,6 +51,7 @@ public class SecurityConfig {
                 .requestMatchers("/auth/refresh").permitAll()  // Keep refresh endpoint
                 .requestMatchers("/api/user/logout").permitAll()  // Single logout endpoint
                 .requestMatchers("/api/debug/**").permitAll()  // Allow diagnostic endpoints
+                .requestMatchers("/api/test/**").permitAll()  // Allow test endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/google/**").hasAnyRole("USER", "ADMIN")

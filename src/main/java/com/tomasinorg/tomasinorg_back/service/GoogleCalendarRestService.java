@@ -1,18 +1,26 @@
 package com.tomasinorg.tomasinorg_back.service;
 
-import com.tomasinorg.tomasinorg_back.dto.calendar.*;
-import com.tomasinorg.tomasinorg_back.model.User;
-import com.tomasinorg.tomasinorg_back.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
+import java.time.LocalDateTime;
+
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import com.tomasinorg.tomasinorg_back.dto.calendar.CalendarDto;
+import com.tomasinorg.tomasinorg_back.dto.calendar.CalendarListRequest;
+import com.tomasinorg.tomasinorg_back.dto.calendar.CreateEventRequest;
+import com.tomasinorg.tomasinorg_back.dto.calendar.EventListRequest;
+import com.tomasinorg.tomasinorg_back.dto.calendar.UpdateEventRequest;
+import com.tomasinorg.tomasinorg_back.model.User;
+import com.tomasinorg.tomasinorg_back.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -255,6 +263,11 @@ public class GoogleCalendarRestService {
             
             String url = GOOGLE_CALENDAR_API_BASE_URL + "/calendars/" + calendarId + "/events";
             
+            // Log the request details for debugging
+            log.info("Creating event for user: {} in calendar: {}", userEmail, calendarId);
+            log.info("Request URL: {}", url);
+            log.info("Event data: {}", request);
+            
             HttpEntity<CreateEventRequest> entity = new HttpEntity<>(request, headers);
             ResponseEntity<Object> response = restTemplate.exchange(
                     url,
@@ -263,10 +276,15 @@ public class GoogleCalendarRestService {
                     Object.class
             );
 
+            log.info("Event created successfully, response: {}", response.getBody());
             return response.getBody();
         } catch (Exception e) {
             log.error("Error creating event in calendar {} for user: {}", calendarId, userEmail, e);
-            throw new RuntimeException("Failed to create event", e);
+            log.error("Error details - Type: {}, Message: {}", e.getClass().getSimpleName(), e.getMessage());
+            if (e.getCause() != null) {
+                log.error("Caused by: {}", e.getCause().getMessage());
+            }
+            throw new RuntimeException("Failed to create event: " + e.getMessage(), e);
         }
     }
 
